@@ -9,3 +9,4 @@ To change the resolution, you can edit the values at the top of PPU2C02.h.
 
 # This has only been tested on Linux
 But I think the only non-standard library is for keyboard inputs, so if you want to make it work you should be able to just change the Controller class to use whatever library works on your system and then change the makefile flags.
+Also you might need to change the slashes in the file paths.
