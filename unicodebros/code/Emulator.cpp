@@ -1,6 +1,3 @@
-//
-// Created by Folsense on 4/14/21.
-//
 #ifndef EMULATOR_CPP
 #define EMULATOR_CPP
 #include "Emulator.h"
