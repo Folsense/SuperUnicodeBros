@@ -118,8 +118,8 @@ void PPU2C02::primeRegisters(){
     }
     nameTableByte = bus->ppuRead(0x2000 + pos + control.nametableAddress * 0x400);
     attributeTableLow = bus->ppuRead(0x2000 + pos + control.nametableAddress * 0x400);
-    patternTableTileLow = bus->ppuRead(nameTableByte * 16 + (scanline + 1) % 8 + 0x1000) << 8;
-    patternTableTileHigh = bus->ppuRead(nameTableByte * 16 + 8 + (scanline + 1) % 8 + 0x1000) << 8;
+    patternTableTileLow = bus->ppuRead(nameTableByte * 16 + (scanline + PPUSCROLLY) % 8 + 0x1000) << 8;
+    patternTableTileHigh = bus->ppuRead(nameTableByte * 16 + 8 + (scanline + PPUSCROLLY) % 8 + 0x1000) << 8;
     attributeTableLow;
 
     x = 8 + PPUSCROLLX;
@@ -134,8 +134,8 @@ void PPU2C02::primeRegisters(){
         pos += 0x800;
     }
     nameTableByte = bus->ppuRead(0x2000 + pos + control.nametableAddress * 0x400);
-    patternTableTileLow |= bus->ppuRead(nameTableByte * 16 + (scanline + 1) % 8 + 0x1000);
-    patternTableTileHigh |= bus->ppuRead(nameTableByte * 16 + 8 + (scanline + 1) % 8 + 0x1000);
+    patternTableTileLow |= bus->ppuRead(nameTableByte * 16 + (scanline + PPUSCROLLY) % 8 + 0x1000);
+    patternTableTileHigh |= bus->ppuRead(nameTableByte * 16 + 8 + (scanline + PPUSCROLLY) % 8 + 0x1000);
     attributeTableLow;
 }
 
@@ -201,7 +201,7 @@ void PPU2C02::doCycles(int cycles){
             cycle += 64;
             cycleBalance -= 64;
         } else if (cycle <= 336){
-            primeRegisters();
+            //primeRegisters();
             cycle += 16;
             cycleBalance -= 16;
         } else if(cycle <= 340){
