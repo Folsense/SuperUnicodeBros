@@ -15,19 +15,24 @@ byte PPUBus::ppuRead (const int index) {
         return rom->chrrom[index];
     } else if(index < 0x3000){
         //Hard-coded vertical mirroring
-        return mem->data[0x2000 + (index % 0x800)];
+        if(rom->mirroring){
+            return mem->data[0x2000 + (index % 0x800)];
+        } else {
+            if(index % 0x800 >= 0x400){
+                return mem->data[index - 0x400];
+            }
+            return mem->data[index];
+        }
     }else if(index < 0x3F00){
-        return mem->data[0x2000 + (index % 0x800)];
+        return ppuRead(index - 0x1000);
     } else if (index < 0x4000){
-        //This is hacky, only for 16kb nrom like Balloon Fight rn
-        //std::cout << "Read from prgrom at " << index % 0x4000 << '\n';
         if(index == 0x3F10 || index == 0x3F14 || index == 0x3F18 || index == 0x3F1C){
             //Mirrors
             return mem->data[index - 0x10];    
         }
         return mem->data[index];
     } else {
-        std::cout << "Oh no a weird memory read thing happened\n";
+        //std::cout << "Oh no a weird memory read thing happened\n";
     }
 }
 
@@ -43,12 +48,16 @@ void PPUBus::ppuWrite (const int index, byte val) {
         //std::cout << "write to PPU2C02 register at " << index << '\n';
         rom->chrrom[index] = val;
     } else if(index < 0x3000){
-        //std::cout << "Write to PPU val " << int(val) << " at " << std::hex << index << '\n';
-        //Hard coded vertical mirroring
-        mem->data[0x2000 + (index % 0x800)] = val;
+        if(rom->flags6 & 1){
+            mem->data[0x2000 + (index % 0x800)] = val;
+        } else {
+            if(index % 0x800 >= 0x400){
+                mem->data[index - 0x400] = val;
+            }
+            mem->data[index] = val;
+        }
     } else if(index < 0x3F00){
-        word index2 = index - 0x1000;
-        mem->data[0x2000 + index2 % 0x800] = val;
+        ppuWrite(index - 0x1000, val);
     } else if (index < 0x4000){
         if(index == 0x3F10 || index == 0x3F14 || index == 0x3F18 || index == 0x3F1C){
             //Mirrors
@@ -57,7 +66,7 @@ void PPUBus::ppuWrite (const int index, byte val) {
             mem->data[index] = val;
         }
     } else {
-        std::cout << "Oh no a weird memory read thing happened\n";
+        //std::cout << "Oh no a weird memory read thing happened\n";
     }
 }
 

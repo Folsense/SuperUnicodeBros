@@ -8,7 +8,6 @@ Nesrom::Nesrom(){
 void Nesrom::read (){
     //Read four magic bytes
     std::cout << "Magic: " << magic << '\n';
-    std::cout << "Position: " << romFile.tellg() << '\n';
     romFile.read(magic, 4);
     romFile >> prgromlen >> chrromlen >> flags6 >> flags7 >> flags8 >> flags9 >> flags10;
     std::cout << "PRG ROM length (in 16kb blocks): " << int(prgromlen) << '\n';
@@ -28,4 +27,5 @@ void Nesrom::read (){
         chrrom[i] = static_cast<byte>(0xFF) & static_cast<char>(chrromchar[i]);
     }
     romFile.close();
+    mirroring = flags6 & 0x1;
 }

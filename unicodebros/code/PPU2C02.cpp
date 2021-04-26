@@ -104,6 +104,84 @@ void PPU2C02::draw(){
     }*/
 }
 
+void PPU2C02::primeRegisters(){
+    word x = PPUSCROLLX;
+    word y = scanline + PPUSCROLLY;
+    word pos = (x % 0xFF) / 8 + ((y % 0xF0) / 8) * 32;
+    while(y >= 0xF0){
+        y -= 0xF0;
+        pos += 0x800;
+    }
+    while(x > 0xFF){
+        pos += 0x400;
+        x -= 0xFF;
+    }
+    nameTableByte = bus->ppuRead(0x2000 + pos + control.nametableAddress * 0x400);
+    attributeTableLow = bus->ppuRead(0x2000 + pos + control.nametableAddress * 0x400);
+    patternTableTileLow = bus->ppuRead(nameTableByte * 16 + (scanline + 1) % 8 + 0x1000) << 8;
+    patternTableTileHigh = bus->ppuRead(nameTableByte * 16 + 8 + (scanline + 1) % 8 + 0x1000) << 8;
+    attributeTableLow;
+
+    x = 8 + PPUSCROLLX;
+    y = scanline + PPUSCROLLY;
+    pos = (x % 0x100) / 8 + ((y % 0xF0) / 8) * 32;
+    while(x > 0xFF){
+        pos += 0x400;
+        x -= 0xFF;
+    }
+    while(y >= 0xF0){
+        y -= 0xF0;
+        pos += 0x800;
+    }
+    nameTableByte = bus->ppuRead(0x2000 + pos + control.nametableAddress * 0x400);
+    patternTableTileLow |= bus->ppuRead(nameTableByte * 16 + (scanline + 1) % 8 + 0x1000);
+    patternTableTileHigh |= bus->ppuRead(nameTableByte * 16 + 8 + (scanline + 1) % 8 + 0x1000);
+    attributeTableLow;
+}
+
+void PPU2C02::primeSprites(){
+    byte spriteid = 0;
+    numspritestodraw = 0;
+    for(int j = 0; j < 256; j ++){
+        spritepixelvals[j] = 0xFF;
+        spritepriors[j] = 1;
+        spritepixelvalsr[j] = 0xFF;
+        spritepixelvalsg[j] = 0xFF;
+        spritepixelvalsb[j] = 0xFF;
+        spriteids[j] = 0x200;
+    }
+    for(int j = OAMADDR; j < 256; j += 4){
+        byte ypos = oam[j];
+        if(ypos <= scanline + 1 && ypos + 7 >= scanline + 1){
+            byte yoff = scanline + 1 - ypos;
+            if(oam[j + 2] & 0b10000000){
+                yoff = 7 - yoff;
+            }
+            byte byte0 = bus->ppuRead(oam[j + 1] * 16 + yoff + 0x1000 * control.spritePatternTbl);
+            byte byte1 = bus->ppuRead(oam[j + 1] * 16 + yoff + 8 + 0x1000 * control.spritePatternTbl);     
+            spritestodraw[numspritestodraw++] = j;
+            for(int k = 0; k < 8; k ++){
+                byte xoff = 7 - k;
+                if(oam[j + 2] & 0b01000000){
+                    xoff = k;
+                }
+                byte clrvalsprite = (byte0 >> k & 1) + 2 * (byte1 >> k & 1);
+                byte paletteIndex;
+                if(clrvalsprite != 0 && (xoff + oam[j + 3] < 0x100)){
+                    paletteIndex = bus->ppuRead(0x3F11 + 4 * (oam[j + 2] & 0b00000011) + clrvalsprite - 1);
+                    spriteids[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = spriteid;
+                    spritepriors[xoff + oam[j + 3]] = (oam[j + 2] >> 5) & 0x1;
+                    spritepixelvals[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = paletteIndex;
+                    spritepixelvalsr[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = palette[paletteIndex][0];
+                    spritepixelvalsg[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = palette[paletteIndex][1];
+                    spritepixelvalsb[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = palette[paletteIndex][2];
+                }
+            }
+        }
+        spriteid += 1;
+    }
+}
+
 void PPU2C02::doCycles(int cycles){
     //https://wiki.nesdev.com/w/index.php/PPU_rendering#Cycle_0
     cycleBalance += cycles;
@@ -123,79 +201,21 @@ void PPU2C02::doCycles(int cycles){
             cycle += 64;
             cycleBalance -= 64;
         } else if (cycle <= 336){
-            word x = PPUSCROLLX;
-            word pos = (x % 0xFF) / 8 + ((scanline + 1) / 8) * 32;
-            while(x > 0xFF){
-                pos += 0x400;
-                x -= 0xFF;
-            }
-            nameTableByte = bus->ppuRead(0x2000 + pos + control.nametableAddress * 0x400);
-            attributeTableLow = bus->ppuRead(0x2000 + pos + control.nametableAddress * 0x400);
-            patternTableTileLow = bus->ppuRead(nameTableByte * 16 + (scanline + 1) % 8 + 0x1000) << 8;
-            patternTableTileHigh = bus->ppuRead(nameTableByte * 16 + 8 + (scanline + 1) % 8 + 0x1000) << 8;
-            attributeTableLow;
-
-            x = 8 + PPUSCROLLX;
-            pos = (x % 0x100) / 8 + ((scanline + 1) / 8) * 32;
-            while(x > 0xFF){
-                pos += 0x400;
-                x -= 0xFF;
-            }
-            nameTableByte = bus->ppuRead(0x2000 + pos + control.nametableAddress * 0x400);
-            patternTableTileLow |= bus->ppuRead(nameTableByte * 16 + (scanline + 1) % 8 + 0x1000);
-            patternTableTileHigh |= bus->ppuRead(nameTableByte * 16 + 8 + (scanline + 1) % 8 + 0x1000);
-            attributeTableLow;
-
+            primeRegisters();
             cycle += 16;
             cycleBalance -= 16;
         } else if(cycle <= 340){
             cycle += 4;
             cycleBalance -= 4;
         } else {
-            byte spriteid = 0;
-            numspritestodraw = 0;
-            for(int j = 0; j < 256; j ++){
-                spritepixelvals[j] = 0xFF;
-                spritepixelvalsr[j] = 0xFF;
-                spritepixelvalsg[j] = 0xFF;
-                spritepixelvalsb[j] = 0xFF;
-                spriteids[j] = 0x200;
-            }
-            for(int j = OAMADDR; j < 256; j += 4){
-                byte ypos = oam[j];
-                if(ypos <= scanline + 1 && ypos + 7 >= scanline + 1 && numspritestodraw < 8){
-                    byte yoff = scanline + 1 - ypos;
-                    byte byte0 = bus->ppuRead(oam[j + 1] * 16 + yoff + 0x1000 * control.spritePatternTbl);
-                    byte byte1 = bus->ppuRead(oam[j + 1] * 16 + yoff + 8 + 0x1000 * control.spritePatternTbl);     
-                    spritestodraw[numspritestodraw++] = j;
-                    for(int k = 0; k < 8; k ++){
-                        byte xoff = 7 - k;
-                        if(oam[j + 2] & 0b01000000){
-                            xoff = k;
-                        }
-                        byte clrvalsprite = (byte0 >> k & 1) + 2 * (byte1 >> k & 1);
-                        byte paletteIndex;
-                        if(clrvalsprite == 0){
-                            continue;
-                        } else{
-                            paletteIndex = bus->ppuRead(0x3F11 + 4 * (oam[j + 2] & 0b00000011) + clrvalsprite - 1);
-                        }
-                        //std::cout << "Sprite index is " << int(paletteIndex) << '\n';
-                        spriteids[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = spriteid;
-                        spritepixelvals[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = paletteIndex;
-                        spritepixelvalsr[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = palette[paletteIndex][0];
-                        spritepixelvalsg[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = palette[paletteIndex][1];
-                        spritepixelvalsb[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = palette[paletteIndex][2];
-                    }
-                }
-                spriteid += 1;
-            }
+            primeSprites();
             scanline += 1;
             cycle = 0;
         }
     } 
     else if (scanline <= 239){
         if(cycle == 0){
+            primeRegisters();
             //Hacked in for Mario Bros
             if(scanline == 30){
                 status.sprite0hit = 1;
@@ -205,21 +225,19 @@ void PPU2C02::doCycles(int cycles){
             status.spriteoverflow = 0;
         } else if (cycle <= 256){
             word x = cycle + 15 + PPUSCROLLX;
-            word pos = (x % 0x100) / 8 + (scanline / 8) * 32;
+            word y = scanline + PPUSCROLLY;
+            word pos = (x % 0x100) / 8 + int((y % 0xF0) / 8) * 32;
             while(x > 0xFF){
                 pos += 0x400;
                 x -= 0xFF;
             }
-            nameTableByte = bus->ppuRead(0x2000 + pos + control.nametableAddress * 0x400);
-            /*attributeLatch = bus->ppuRead(0x2000 + control.nametableAddress * 0x400 + 0x3C0 + (x + 1) / 32 + (scanline / 32) * 8);
-            if((x + 1) % 32 > 15){
-                attributeLatch >>= 2;
+            while(y >= 0xF0){
+                y -= 0xF0;
+                pos += 0x800;
             }
-            if(scanline % 32 > 15){
-                attributeLatch >>= 4;
-            }*/
-            patternLowLatch = bus->ppuRead(nameTableByte * 16 + scanline % 8 + 0x1000);
-            patternHighLatch = bus->ppuRead(nameTableByte * 16 + 8 + scanline % 8 + 0x1000);
+            nameTableByte = bus->ppuRead(0x2000 + pos + control.nametableAddress * 0x400);
+            patternLowLatch = bus->ppuRead(nameTableByte * 16 + y % 8 + 0x1000);
+            patternHighLatch = bus->ppuRead(nameTableByte * 16 + 8 + y % 8 + 0x1000);
             signed char pos2 = -1;
             byte paletteInd = 0;
             byte clr = 0;
@@ -231,20 +249,25 @@ void PPU2C02::doCycles(int cycles){
                     paletteInd = spritepixelvals[cycle + pos2];
                 }   
                 clr = ((patternTableTileLow & (0x8000 >> i)) > 0) + 2 * ((patternTableTileHigh & (0x8000 >> i)) > 0);
-                int nowclrpos = (cycle + PPUSCROLLX + pos2) / 16 + (scanline / 16) * 16;
+                int nowclrpos = (cycle + PPUSCROLLX + pos2) / 16 + ((scanline + PPUSCROLLY) / 16) * 16;
                 //if(nowclrpos != clrpos){
                 int readPaletteFrom = cycle + PPUSCROLLX + pos2;
+                int readPaletteFromY = scanline + PPUSCROLLY;
                 word add2 = 0;
                 while(readPaletteFrom >= 0x100){
                     readPaletteFrom -= 0x100;
                     add2 += 0x400;
                 }
-                int finalPosition = 0x2000 + control.nametableAddress * 0x400 + 0x3C0 + (readPaletteFrom) / 32 + add2 + (scanline / 32) * 8;
+                while(readPaletteFromY >= 0xF0){
+                    readPaletteFromY -= 0xF0;
+                    add2 += 0x800;
+                }
+                int finalPosition = 0x2000 + control.nametableAddress * 0x400 + 0x3C0 + (readPaletteFrom) / 32 + add2 + (readPaletteFromY / 32) * 8;
                 clrval = bus->ppuRead(finalPosition);
                 if((cycle + PPUSCROLLX + pos2) % 32 > 15){
                     clrval >>= 2;
                 }
-                if(scanline % 32 > 15){
+                if((scanline + PPUSCROLLY) % 32 > 15){
                     clrval >>= 4;
                 }
                 clrval &= 0x3;
@@ -337,75 +360,13 @@ void PPU2C02::doCycles(int cycles){
             cycle += 64;
             cycleBalance -= 64;
         } else if (cycle <= 336){
-            word x = PPUSCROLLX;
-            word pos = (x % 0xFF) / 8 + ((scanline + 1) / 8) * 32;
-            while(x > 0xFF){
-                pos += 0x400;
-                x -= 0xFF;
-            }
-            nameTableByte = bus->ppuRead(0x2000 + pos + control.nametableAddress * 0x400);
-            attributeTableLow = bus->ppuRead(0x2000 + pos + control.nametableAddress * 0x400);
-            patternTableTileLow = bus->ppuRead(nameTableByte * 16 + (scanline + 1) % 8 + 0x1000) << 8;
-            patternTableTileHigh = bus->ppuRead(nameTableByte * 16 + 8 + (scanline + 1) % 8 + 0x1000) << 8;
-            attributeTableLow;
-
-            x = 8 + PPUSCROLLX;
-            pos = (x % 0x100) / 8 + ((scanline + 1) / 8) * 32;
-            while(x > 0xFF){
-                pos += 0x400;
-                x -= 0xFF;
-            }
-            nameTableByte = bus->ppuRead(0x2000 + pos + control.nametableAddress * 0x400);
-            patternTableTileLow |= bus->ppuRead(nameTableByte * 16 + (scanline + 1) % 8 + 0x1000);
-            patternTableTileHigh |= bus->ppuRead(nameTableByte * 16 + 8 + (scanline + 1) % 8 + 0x1000);
-            attributeTableLow;
-
             cycle += 16;
             cycleBalance -= 16;
         } else if(cycle <= 340){
             cycle += 4;
             cycleBalance -= 4;
         } else {
-            byte spriteid = 0;
-            numspritestodraw = 0;
-            for(int j = 0; j < 256; j ++){
-                spritepixelvals[j] = 0xFF;
-                spritepriors[j] = 1;
-                spritepixelvalsr[j] = 0xFF;
-                spritepixelvalsg[j] = 0xFF;
-                spritepixelvalsb[j] = 0xFF;
-                spriteids[j] = 0x200;
-            }
-            for(int j = OAMADDR; j < 256; j += 4){
-                byte ypos = oam[j];
-                if(ypos <= scanline + 1 && ypos + 7 >= scanline + 1){
-                    byte yoff = scanline + 1 - ypos;
-                    if(oam[j + 2] & 0b10000000){
-                        yoff = 7 - yoff;
-                    }
-                    byte byte0 = bus->ppuRead(oam[j + 1] * 16 + yoff + 0x1000 * control.spritePatternTbl);
-                    byte byte1 = bus->ppuRead(oam[j + 1] * 16 + yoff + 8 + 0x1000 * control.spritePatternTbl);     
-                    spritestodraw[numspritestodraw++] = j;
-                    for(int k = 0; k < 8; k ++){
-                        byte xoff = 7 - k;
-                        if(oam[j + 2] & 0b01000000){
-                            xoff = k;
-                        }
-                        byte clrvalsprite = (byte0 >> k & 1) + 2 * (byte1 >> k & 1);
-                        byte paletteIndex;
-                        if(clrvalsprite != 0 && (xoff + oam[j + 3] < 0x100)){
-                            paletteIndex = bus->ppuRead(0x3F11 + 4 * (oam[j + 2] & 0b00000011) + clrvalsprite - 1);
-                            spriteids[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = spriteid;
-                            spritepriors[xoff + oam[j + 3]] = (oam[j + 2] >> 5) & 0x1;
-                            spritepixelvals[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = paletteIndex;
-                            spritepixelvalsr[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = palette[paletteIndex][0];
-                            spritepixelvalsg[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = palette[paletteIndex][1];
-                            spritepixelvalsb[static_cast<byte>(xoff + oam[j + 3]) & 0xff] = palette[paletteIndex][2];
-                        }
-                    }
-                }
-                spriteid += 1;
-            }
+            primeSprites();
             if(scanline >= scanlinectr && numDraws % drawmod == 0){
                 /*int score = bus->cpuRead(0x7DD) * 10000000 + bus->cpuRead(0x7DE) * 1000000 + bus->cpuRead(0x7DF) * 100000 + bus->cpuRead(0x7E0) * 1000 + bus->cpuRead(0x7E1) * 100 + bus->cpuRead(0x7E2) * 10;
                 int time = bus->cpuRead(0x7F8) * 100 + bus->cpuRead(0x7F9) * 10 + bus->cpuRead(0x7FA);
@@ -652,6 +613,10 @@ void PPU2C02::setPPUSCROLL(byte data){
         PPUSCROLLX = data;
         scrollbyte = 1;
     } else {
+        PPUSCROLLY = data;
+        /*if(PPUSCROLLY > 239){
+            PPUSCROLLY -= 256;
+        }*/
         scrollbyte = 0;
     }
 }

@@ -77,6 +77,19 @@ void CPUBus::cpuWrite (const int index, byte val) {
             ppu->setPPUDATA(val);
         } 
     } else if(index < 0x4020){
+        if(index < 0x4004){
+            apu->setchannel1(index);
+            //std::cout << "Channel 1 set" << '\n';
+        } else if (index < 0x4008){
+            apu->setchannel2(index);
+        } 
+        if(index == 0x4008 || index == 0x400A || index == 0x400B){
+            apu->settriangle(index);
+            //std::cout << "Channel 1 set" << '\n';
+        }
+        if(index == 0x4015 && val){
+            apu->halt(val);
+        }
         if(index == 0x4014){
             ppu->doOAMDMA(val);
         } else if(index == 0x4016){

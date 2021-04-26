@@ -30,6 +30,9 @@ void Emulator::start(){
     ppu.cpumem = &mem;
     ppubus.cpumem = &mem;
     cpu.bus = &cpubus;
+    apu.mem = &mem;
+    cpu.apu = &apu;
+    cpubus.apu = &apu;
     reset();
     //ppu.testDraw();
 

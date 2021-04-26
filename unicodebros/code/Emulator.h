@@ -9,6 +9,7 @@
 #include "helper.h"
 #include "Memory.h"
 #include "Controller.h"
+#include "APU.h"
 
 class Emulator {
 public:
@@ -20,6 +21,7 @@ public:
     Memory ppumem;
     PPU2C02 ppu;
     Controller player1;
+    APU apu;
 
     CPU6502 cpuback;
     Memory memback;

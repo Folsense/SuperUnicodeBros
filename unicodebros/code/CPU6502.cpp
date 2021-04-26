@@ -1357,6 +1357,7 @@ void CPU6502::execute(CPUBus& mem, int cycles, int forever){
         }
         if(bus->ppu->doNMI2){
             bus->ppu->doNMI2 = false;
+            apu->update();
             if(bus->player1->key_is_pressed(XK_q)){
                 std::cout << "\n";
                 #ifdef __unix__ 
@@ -1403,7 +1404,7 @@ void CPU6502::execute(CPUBus& mem, int cycles, int forever){
         clearInstruction();
         bus->ppu->doCycles(3 * (beforeCycles - cycles));
         //bus->ppu->updatePosition(3);
-        numInsts += beforeCycles - cycles;
+        numInsts += 1;
         if(bus->ppu->doNMI){
             bus->ppu->doNMI = false;
             //if(i){

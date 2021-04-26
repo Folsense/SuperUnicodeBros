@@ -2,9 +2,11 @@
 #define NESEMU_CPU6502_H
 #include "helper.h"
 #include "CPUBus.h"
+#include "APU.h"
 
 struct CPU6502 {
 public:
+    APU* apu;
     int pc; //program counter
     //Mario bros sets sp to 0xff at start
     byte sp; //stack pointer (lower byte of $0100-$01FF)

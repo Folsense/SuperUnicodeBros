@@ -60,6 +60,7 @@ public:
     int timer = -1;
     byte OAMDATA = 0;
     byte PPUSCROLLX = 0;
+    int PPUSCROLLY = 0;
     word PPUADDR = 0;
     word PPUADDR2 = 0;
     word ppuaddrbyte = 0;
@@ -133,11 +134,13 @@ public:
     byte attributeTableHigh = 0;
     word patternTableTileLow = 0;
     word patternTableTileHigh = 0;
-
+    
     PPU2C02 makeCopy();
     PPU2C02();
     void testDraw();
     void updatePixel();
+    void primeRegisters();
+    void primeSprites();
     void updatePosition(int cycles);
     byte readFromNametable(word addr);
     void draw();

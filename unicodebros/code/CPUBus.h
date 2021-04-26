@@ -6,6 +6,7 @@
 #include "Memory.h"
 #include "PPU2C02.h"
 #include "Controller.h"
+#include "APU.h"
 
 using ushort = unsigned short;
 
@@ -16,6 +17,7 @@ public:
     Memory* mem;
     PPU2C02* ppu;
     Controller* player1;
+    APU* apu;
     void reset();
     /* Read a byte from the data */
     //byte operator[](const int index) const;
