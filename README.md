@@ -2,8 +2,7 @@
 Mario in the command line
 
 Please don't try to learn from this I don't know how to write code properly.
-To use it, put your mario bros rom ("named mariobros.nes") into the roms folder and run make and then ./mario.
-You can try a different rom, but there's a very high chance something won't work correctly. Only the earliest games should work (like Golf, Donkey Kong, and Balloon Fight), and even some of those don't work because there's a bug or I didn't implement something they use like vertical scrolling. My goal was to get Mario Bros working, and it does.
+To use it, put your mario bros rom ("named mariobros.nes") into the roms folder and run make and then ./mario. I assume you'll also need to install the library for keyboard inputs (X11) if your machine supports it. You can try a different rom, but there's a very high chance something won't work correctly. Only the earliest games should work (like Golf, Donkey Kong, and Balloon Fight), and even some of those don't work because there's a bug or I didn't implement something they use.
 
 To change the resolution, you can edit the values at the top of PPU2C02.h.
 
